@@ -48,6 +48,7 @@ class CrawlsController < ApplicationController
       flash[:notice] = 'Crawl was successfully created.'
       format.html { redirect_to(@crawl) }
       format.xml  { render :xml => @crawl, :status => :created, :location => @crawl }
+      format.json { render :json => @crawl }
     end
   end
 

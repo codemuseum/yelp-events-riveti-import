@@ -22,9 +22,10 @@ class Crawl < ActiveRecord::Base
     city_urls = cities.map  { |c| c.attributes['href'] }
     city_urls.each { |city_url| report.concat(parse_events_page(city_url)) }
     
-    ####### SEND REPORT
+    ####### SEND REPORT  ##### TODO START HERE
+    
+    report
   end
-  
   
   def self.parse_events_page(url, iteration = 0)
     parsed_events = []
@@ -47,8 +48,7 @@ class Crawl < ActiveRecord::Base
   end
   
   def self.parse_event_li(event_li)
-    a = (event_li/'h2.title a.url')[0]
-    url = a.attributes['href']
+    url = (event_li/'h2.title a.url')[0].attributes['href']
     
     unless Crawl.first.urls.include?(url)
       return parse_unique_event_url(url)
@@ -60,8 +60,8 @@ class Crawl < ActiveRecord::Base
   def self.parse_unique_event_url(event_url)
     page = Hpricot(open(event_url))
     
-    details => {
-      :category => nil,
+    details = {
+      :category => (page/'#main_events dl > dd a')[0].inner_text,
       :name => (page/'h1#event_name').inner_text,
       :url => event_url,
       :start => (page/'.dtstart')[0].attributes['title'],
