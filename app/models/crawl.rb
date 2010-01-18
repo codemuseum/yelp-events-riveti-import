@@ -27,8 +27,8 @@ class Crawl < ActiveRecord::Base
     report
     
   rescue OpenURI::HTTPError => e
-    logger.debug "FATAL ERROR: Couldn't open base URL '#{URL}' because of an HTTP Error. #{e}"
-    raise e
+    logger.error "FATAL ERROR: Couldn't open base URL '#{URL}' because of an HTTP Error. #{e}"
+    raise
   end
   
   def self.parse_events_page(url, iteration = 0)
