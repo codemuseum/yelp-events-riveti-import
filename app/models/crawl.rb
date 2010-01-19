@@ -3,6 +3,7 @@ require 'net/http'
 
 class Crawl < ActiveRecord::Base
   URL = 'http://www.yelp.com/locations?return_url=/events/sf/browse'
+  CITY_BASE_URL = 'http://www.yelp.com'
   
   
   def self.seed_crawl_if_required
@@ -15,11 +16,13 @@ class Crawl < ActiveRecord::Base
     seed_crawl_if_required
 
     page = Hpricot(open(URL))
-    cities = (page/'li.state ul.city li.a')
+    logger.debug "Opened #{URL}"
+    cities = (page/'li.state ul.cities li a')
 
     report = []
 
     city_urls = cities.map  { |c| c.attributes['href'] }
+    logger.debug "Found #{city_urls.size} cities."
     city_urls.each { |city_url| report.concat(parse_events_page(city_url)) }
     
     ####### SEND REPORT  ##### TODO START HERE
@@ -35,17 +38,21 @@ class Crawl < ActiveRecord::Base
     parsed_events = []
     
     begin
-      page = Hpricot(open(city_url))
+      page = Hpricot(open("#{CITY_BASE_URL}#{url}"))
+      logger.debug "Opened #{CITY_BASE_URL}#{url}"
       events = (page/'ul#main_events_list li')
+      logger.debug "Found #{events.size} events"
       events.each do |event| 
         result = parse_event_li(event)
         parsed_events << result if result
       end
       
     rescue OpenURI::HTTPError => e
-      logger.debug "Couldn't open city: #{city_url} because of an HTTP Error. #{e}"
+      logger.debug "Couldn't open city: #{url} because of an HTTP Error. #{e}"
+      raise
     rescue StandardError => e
-      logger.debug "Couldn't open city: #{city_url}. #{e}"
+      logger.debug "Couldn't open city: #{url}. #{e}"
+      raise
     end
     
     parsed_events
@@ -62,31 +69,41 @@ class Crawl < ActiveRecord::Base
   end
   
   def self.parse_unique_event_url(event_url)
-    page = Hpricot(open(event_url))
+    page = Hpricot(open("#{CITY_BASE_URL}#{event_url}"))
+    # Make nil checking easier
+    category = (page/'#main_events dl > dd a')[0]
+    postal_code = (page/'.postal-code')[0]
+    street_address1 = (page/'.street-address')[0]
+    locality = (page/'.locality')[0]
+    dtstart = (page/'.dtstart')[0]
+    region = (page/'.region')[0]
+    subscriber_count = (page/'#subscriber_count')[0]
+    watching_count = (page/'#watching_count')[0]
     
     details = {
-      :category => (page/'#main_events dl > dd a')[0].inner_text,
+      :category => category ? category.inner_text : nil,
       :name => (page/'h1#event_name').inner_text,
-      :url => event_url,
-      :start => (page/'.dtstart')[0].attributes['title'],
+      :url => "#{CITY_BASE_URL}#{event_url}",
+      :start => dtstart ? dtstart.attributes['title'] : nil,
       :end => nil,
       :timezone => nil,
-      :street_address1 => (page/'.street-address')[0].inner_text,
+      :street_address1 => street_address1 ? street_address1.inner_text : nil,
       :street_address2 => nil,
-      :city => (page/'.locality')[0].inner_text,
-      :state_province_region => (page/'.region')[0].inner_text,
-      :zip_postal_code => (page/'.postal-code')[0].inner_text,
+      :city => locality ? locality.inner_text : nil,
+      :state_province_region => region ? region.inner_text : nil,
+      :zip_postal_code =>  postal_code ? postal_code.inner_text : nil,
       :country => 'US',
-      :popularity_rank => (page/'#subscriber_count')[0].inner_text.to_i + (page/'#watching_count')[0].inner_text.to_i
+      :popularity_rank => 
+        (subscriber_count ? subscriber_count.inner_text.to_i : 0) + (watching_count ? watching_count.inner_text.to_i : 0)
     }
     
     Crawl.first.update_attribute(:urls, "#{event_url}|#{Crawl.first.urls}")
   
     details
     
-  rescue StandardError => e
-    logger.debug "Couldn't open event: #{event_url}. #{e}"
-    nil
+  # rescue StandardError => e
+  #   logger.debug "Couldn't open event: #{event_url}. #{e}"
+  #   nil
   end
   
   
