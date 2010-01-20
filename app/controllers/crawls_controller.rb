@@ -74,8 +74,7 @@ class CrawlsController < ApplicationController
   # DELETE /crawls/1
   # DELETE /crawls/1.xml
   def destroy
-    @crawl = Crawl.find(params[:id])
-    @crawl.update_attribute(:urls, "")
+    Crawl.clear_crawl
 
     respond_to do |format|
       format.html { redirect_to(crawls_url) }

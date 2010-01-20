@@ -12,8 +12,12 @@ class Crawl < ActiveRecord::Base
     Crawl.new(:urls => '').save
   end
 
+  def self.clear_crawl
+    Crawl.first.update_attribute(:urls, "")
+  end
   
-  def self.update_crawl
+  # You can limit the amount of crawled cities by passing in a number > 0
+  def self.update_crawl(limit_crawled_cities = 0)
     seed_crawl_if_required
 
     page = Hpricot(open(URL))
@@ -24,6 +28,9 @@ class Crawl < ActiveRecord::Base
 
     city_urls = cities.map  { |c| c.attributes['href'] }
     logger.debug "Found #{city_urls.size} cities."
+    
+    city_urls = city_urls[0...limit_crawled_cities] if limit_crawled_cities > 0
+    
     city_urls.each { |city_url| report.concat(parse_events_page(city_url)) }
     
     ####### SEND REPORT
@@ -51,10 +58,10 @@ class Crawl < ActiveRecord::Base
       
     rescue OpenURI::HTTPError => e
       logger.debug "Couldn't open city: #{url} because of an HTTP Error. #{e}"
-      raise
+      # raise
     rescue StandardError => e
       logger.debug "Couldn't open city: #{url}. #{e}"
-      raise
+      # raise
     end
     
     parsed_events
@@ -83,7 +90,7 @@ class Crawl < ActiveRecord::Base
     watching_count = (page/'#watching_count')[0]
     
     details = {
-      :category => category ? category.inner_text : nil,
+      :category_name => category ? category.inner_text : nil,
       :name => (page/'h1#event_name').inner_text,
       :url => "#{CITY_BASE_URL}#{event_url}",
       :start => dtstart ? dtstart.attributes['title'] : nil,
