@@ -2,7 +2,6 @@ require 'open-uri'
 require 'net/http'
 
 class Crawl < ActiveRecord::Base
-  include RivetiObjectMethods
   
   URL = 'http://www.yelp.com/locations?return_url=/events/sf/browse'
   CITY_BASE_URL = 'http://www.yelp.com'
@@ -28,7 +27,7 @@ class Crawl < ActiveRecord::Base
     city_urls.each { |city_url| report.concat(parse_events_page(city_url)) }
     
     ####### SEND REPORT
-    Crawl.first.send_events(report) if report.size > 0
+    Riveti::Api.send_events(report) if report.size > 0
     
     report
     
