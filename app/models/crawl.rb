@@ -43,7 +43,7 @@ class Crawl < ActiveRecord::Base
     raise
   end
   
-  def self.parse_events_page(url, iteration = 0)
+  def self.parse_events_page(url)
     parsed_events = []
     
     begin
@@ -92,6 +92,7 @@ class Crawl < ActiveRecord::Base
     details = {
       :category_name => category ? category.inner_text : nil,
       :name => (page/'h1#event_name').inner_text,
+      :description => truncate((page/'#event_description').inner_text.strip, 255),
       :url => "#{CITY_BASE_URL}#{event_url}",
       :start => dtstart ? dtstart.attributes['title'] : nil,
       :end => nil,
@@ -115,30 +116,21 @@ class Crawl < ActiveRecord::Base
   #   nil
   end
   
-  
-  
-  
-  def self.send_tweet(msg)
-    response = User.consumer.request(:post, "/statuses/update.json?status=#{CGI::escape(msg)}", User.first.access_token, { :scheme => :query_string })
-    case response
-    when Net::HTTPSuccess
-      response.body
-    else
-      response.error!
-      logger.error "--- Failed to sent tweet `#{msg}` via OAuth for #{User.first.user_name}"
-    end
-  end
-  
-  def self.build_tweet(title, url, tags)
-    if "#{title} #{url}".length > 140
-      return "#{title[0..(140-1-url.size)]} #{url}"
-    elsif "#{title} #{url} #{tags.join(' ')}".length > 140
-      tags_popped = tags.dup
-      tags_popped.pop
-      return build_tweet(title, url, tags_popped)
-    else
-      return "#{title} #{url} #{tags.join(' ')}"
-    end
-  end
+  def self.truncate(text, *args)
+    options = args.extract_options!
+    unless args.empty?
+      ActiveSupport::Deprecation.warn('truncate takes an option hash instead of separate ' +
+      'length and omission arguments', caller)
 
+      options[:length] = args[0] || 30
+      options[:omission] = args[1] || "..."
+    end
+    options.reverse_merge!(:length => 30, :omission => "...")
+
+    if text
+      l = options[:length] - options[:omission].mb_chars.length
+      chars = text.mb_chars
+      (chars.length > options[:length] ? chars[0...l] + options[:omission] : text).to_s
+    end
+  end
 end

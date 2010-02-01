@@ -3,15 +3,8 @@ class CrawlsController < ApplicationController
 
   # GET /crawls
   # GET /crawls.xml
-  def index # TEMP TEMP TEMP TEMP
-    @crawl = Crawl.update_crawl
+  def index
 
-    respond_to do |format|
-      flash[:notice] = 'Crawl was successfully created.'
-      format.html { redirect_to(@crawl) }
-      format.xml  { render :xml => @crawl, :status => :created, :location => @crawl }
-      format.json { render :json => @crawl }
-    end
   end
 
   # GET /crawls/1
