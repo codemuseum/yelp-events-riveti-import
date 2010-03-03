@@ -88,6 +88,7 @@ class Crawl < ActiveRecord::Base
     region = (page/'.region')[0]
     subscriber_count = (page/'#subscriber_count')[0]
     watching_count = (page/'#watching_count')[0]
+    picture = (page/'#main_event_photo img')[0]
     
     details = {
       :category_name => category ? category.inner_text : nil,
@@ -104,7 +105,8 @@ class Crawl < ActiveRecord::Base
       :zip_postal_code =>  postal_code ? postal_code.inner_text : nil,
       :country => 'US',
       :popularity_rank => 
-        (subscriber_count ? subscriber_count.inner_text.to_i : 0) + (watching_count ? watching_count.inner_text.to_i : 0)
+        (subscriber_count ? subscriber_count.inner_text.to_i : 0) + (watching_count ? watching_count.inner_text.to_i : 0),
+      :picture_hotlink => picture ? picture.attributes['src'] : nil
     }
     
     Crawl.first.update_attribute(:urls, "#{event_url}|#{Crawl.first.urls}")
